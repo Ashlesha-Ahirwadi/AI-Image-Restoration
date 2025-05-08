@@ -77,39 +77,33 @@ project/
 - **Framework**: PyTorch
 - **Details**: Artistic colorization model trained on historical photographs to generate realistic colorization.
 
-📊 Current Results & Limitations
+## 📊 Current Results & Limitations
 The pipeline is currently in development and generates the following outputs:
-Denoising Output
+**Denoising Output**
 
 Preliminary noise reduction with some remaining artifacts
 Performance varies significantly based on input image quality
-Output appears in the /outputs/epoch_X/ directory during training with:
-
-original.png: The clean target image
-noisy.png: The artificially degraded input image
-reconstruction.png: The denoised result (work in progress)
 
 
-
-Super-Resolution Output
+**Super-Resolution Output**
 
 Increased image resolution (4x) with some detail enhancement
 May introduce artifacts in complex texture regions
 Some edge cases remain challenging (e.g., text, fine patterns)
 
-Colorization Output
+**Colorization Output**
 
 Basic color added to grayscale photographs
 Color accuracy needs improvement, especially for unusual scenes
 Results are better for common objects and standard scenes
 
-Pipeline Integration Issues
+**Pipeline Integration Issues**
 
 The sequential application of models can sometimes compound errors
 Performance bottlenecks when processing high-resolution images
 Occasional GPU memory issues with larger images
 
-Planned Improvements
+## Planned Improvements
 
 Fine-tuning the denoising model with more diverse training data
 Implementing an improved loss function for the super-resolution component

@@ -1,138 +1,94 @@
-import os
-import argparse
 import torch
-from torch import nn, optim
-from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
-from torchvision import transforms
-from torchvision.utils import save_image
-import cv2
+import torch.nn as nn
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
+from PIL import Image
+import os
 
-# -------------------------------
-# Define a simple denoising autoencoder
-# -------------------------------
-
-class DenoisingAutoencoder(nn.Module):
+# Define the Denoising Autoencoder
+class DenoiseAutoencoder(nn.Module):
     def __init__(self):
-        super(DenoisingAutoencoder, self).__init__()
+        super(DenoiseAutoencoder, self).__init__()
+        # Encoder
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),  # (B, 64, H/2, W/2)
+            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(True),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # (B, 128, H/4, W/4)
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(True),
+            nn.BatchNorm2d(128)
         )
+        # Decoder
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),  # (B, 64, H/2, W/2)
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),  # (B, 3, H, W)
-            nn.Sigmoid(),  # To keep output in [0, 1]
+            nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.Sigmoid()
         )
-
+        
     def forward(self, x):
         x = self.encoder(x)
         x = self.decoder(x)
         return x
 
-# -------------------------------
-# Train function
-# -------------------------------
+# Dataset Class for Paired Images
+class PairedImageDataset(Dataset):
+    def __init__(self, clean_dir, noisy_dir, transform=None):
+        self.clean_dir = clean_dir
+        self.noisy_dir = noisy_dir
+        self.transform = transform
+        self.image_names = os.listdir(clean_dir)
 
-def train_denoiser(data_dir, epochs=20, batch_size=64, lr=1e-4):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    def __len__(self):
+        return len(self.image_names)
 
-    # Transforms
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-    ])
+    def __getitem__(self, idx):
+        img_name = self.image_names[idx]
+        clean_path = os.path.join(self.clean_dir, img_name)
+        noisy_path = os.path.join(self.noisy_dir, img_name)
+        
+        clean_img = Image.open(clean_path).convert('RGB')
+        noisy_img = Image.open(noisy_path).convert('RGB')
+        
+        if self.transform:
+            clean_img = self.transform(clean_img)
+            noisy_img = self.transform(noisy_img)
+            
+        return noisy_img, clean_img
 
-    # Load datasets
-    train_path = os.path.join(data_dir, 'train')
-    val_path = os.path.join(data_dir, 'val')
+# Data Transformations
+transform = transforms.Compose([
+    transforms.Resize((128, 128)),
+    transforms.ToTensor()
+])
 
-    print(f"Training data folder: {train_path}")
-    print(f"Validation data folder: {val_path}")
+# DataLoader
+dataset = PairedImageDataset(clean_dir='/home/ccx4276/GENAI/processed/train/clean', noisy_dir='/home/ccx4276/GENAI/processed/train/noisy', transform=transform)
+dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+
+# Initialize model, loss function, optimizer
+model = DenoiseAutoencoder()
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+# Training Loop
+num_epochs = 50
+for epoch in range(num_epochs):
+    for data in dataloader:
+        noisy_imgs, clean_imgs = data
+        
+        
+        # Forward pass
+        outputs = model(noisy_imgs)
+        loss = criterion(outputs, clean_imgs)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
     
-    # Debug: List the contents of the data directories
-    print("Train directory contents:", os.listdir(train_path))
-    print("Val directory contents:", os.listdir(val_path))
-
-    train_dataset = ImageFolder(root=train_path, transform=transform)
-    val_dataset = ImageFolder(root=val_path, transform=transform)
-
-    print(f"Found {len(train_dataset)} training samples.")
-    print(f"Found {len(val_dataset)} validation samples.")
-
-    if len(train_dataset) == 0:
-        raise ValueError("Training dataset is empty. Please check the train folder path.")
-    if len(val_dataset) == 0:
-        raise ValueError("Validation dataset is empty. Please check the val folder path.")
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
-
-    # Model
-    model = DenoisingAutoencoder().to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-
-    # Training loop
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for inputs, _ in train_loader:
-            noisy_inputs = inputs + 0.1 * torch.randn_like(inputs)  # Add Gaussian noise
-            noisy_inputs = torch.clamp(noisy_inputs, 0., 1.)
-
-            inputs = inputs.to(device)
-            noisy_inputs = noisy_inputs.to(device)
-
-            outputs = model(noisy_inputs)
-            loss = criterion(outputs, inputs)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-
-        avg_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_loss:.4f}")
-
-        # Save sample output from first batch of validation data
-        model.eval()
-        with torch.no_grad():
-            for val_inputs, _ in val_loader:
-                noisy_val = val_inputs + 0.1 * torch.randn_like(val_inputs)
-                noisy_val = torch.clamp(noisy_val, 0., 1.)
-
-                val_inputs = val_inputs.to(device)
-                noisy_val = noisy_val.to(device)
-                recon = model(noisy_val)
-
-                save_dir = os.path.join("outputs", f"epoch_{epoch+1}")
-                os.makedirs(save_dir, exist_ok=True)
-                save_image(recon.cpu(), os.path.join(save_dir, "reconstruction.png"))
-                save_image(noisy_val.cpu(), os.path.join(save_dir, "noisy.png"))
-                save_image(val_inputs.cpu(), os.path.join(save_dir, "original.png"))
-                break  # Only one batch
-    print("Training completed!")
-
-# -------------------------------
-# Argument parser
-# -------------------------------
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', type=str, required=True, help="Path to data directory (must contain 'train' and 'val')")
-    parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--lr', type=float, default=1e-4)
-    args = parser.parse_args()
-
-    train_denoiser(
-        data_dir=args.data_dir,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        lr=args.lr
-    )
+# Save Model
+torch.save(model.state_dict(), '/home/ccx4276/models/dae_model.pth')

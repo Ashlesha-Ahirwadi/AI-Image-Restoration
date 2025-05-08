@@ -31,10 +31,10 @@ data/
 ├── raw/            # Original unprocessed data
 └── processed/      # Preprocessed data
     ├── train/
-    │   ├── class1/
+    │   ├── clean/
     │   │   ├── clean_0.png
     │   │   └── noisy_0.png
-    │   └── ...
+    │   └── noisy/
     └── val/
         └── ...
 ```
@@ -48,7 +48,6 @@ Training data should be organized with matching pairs of clean/noisy images for 
 project/
 ├── README.md              # Project documentation
 ├── requirements.txt       # Python dependencies
-├── environment.yml        # Conda environment file
 ├── data/                  # Dataset directory
 ├── models/                # Pre-trained model weights
 ├── example_images/        # Sample test images

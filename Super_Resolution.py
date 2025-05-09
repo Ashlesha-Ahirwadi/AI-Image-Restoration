@@ -6,7 +6,7 @@ class SuperResolution:
     def __init__(self):
         self.model = torch.hub.load('xinntao/Real-ESRGAN', 'RealESRGAN_x4plus', pretrained=True)
         self.model.eval()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('mps' if torch.mps.is_available() else 'cpu')
         self.model.to(self.device)
 
     def enhance(self, image):

@@ -2,47 +2,71 @@ import gradio as gr
 import numpy as np
 from PIL import Image
 import torch
-from tensorflow.keras.models import load_model
 from Super_Resolution import SuperResolution
-from GENAI.scripts.Colorization import Colorizer
+from Colorization import Colorizer
+import torchvision.transforms as transforms
+from Denoising_model import DenoiseAutoencoder  # Make sure this import works!
 
-# Load models
-denoiser = load_model('models/denoiser.h5')
+# Set device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Load models (use .pth or .pt for PyTorch)
+denoiser = DenoiseAutoencoder().to(device)
+denoiser.load_state_dict(torch.load('/home/ccx4276/Lung-Tumor-Detection/models/dae_model.pth', map_location=device))
+denoiser.eval()
 sr_model = SuperResolution()
 colorizer = Colorizer()
 
+# Preprocessing for PyTorch model
+transform = transforms.Compose([
+    transforms.Resize((128, 128)),
+    transforms.ToTensor()
+])
+
 def restore_image(input_img):
     try:
-        # Convert to RGB if grayscale
-        if input_img.mode == 'L':
+        # Save original mode
+        orig_mode = input_img.mode
+        if orig_mode == 'L':
             input_img = input_img.convert('RGB')
         
-        # Denoising
-        input_array = np.array(input_img.resize((128, 128))) / 255.0
-        denoised = denoiser.predict(np.expand_dims(input_array, axis=0))[0]
-        denoised = (denoised * 255).astype(np.uint8)
-        denoised_img = Image.fromarray(denoised)
+        # Denoising (PyTorch)
+        input_tensor = transform(input_img).unsqueeze(0).to(device)
+        with torch.no_grad():
+            denoised_tensor = denoiser(input_tensor)
+        denoised_tensor = denoised_tensor.squeeze(0).cpu()
+        denoised_img = transforms.ToPILImage()(denoised_tensor)
         
         # Colorization (only if original was grayscale)
-        if input_img.mode == 'L':
-            denoised_img = colorizer.colorize(denoised_img)
+        if orig_mode == 'L':
+            colorized_img = colorizer.colorize(denoised_img)
+        else:
+            colorized_img = denoised_img
         
         # Super-resolution
-        final_img = sr_model.enhance(denoised_img)
+        super_res_img = sr_model.enhance(colorized_img)
         
-        return final_img
+        # Final processed image (same as super_res_img in this pipeline)
+        final_img = super_res_img
+        
+        return denoised_img, colorized_img, super_res_img, final_img
     
     except Exception as e:
-        return f"Error: {str(e)}"
+        return None, None, None, f"Error: {str(e)}"
 
 iface = gr.Interface(
     fn=restore_image,
     inputs=gr.Image(type="pil"),
-    outputs=gr.Image(type="pil"),
+    outputs=[
+        gr.Image(type="pil", label="Denoised Image"),
+        gr.Image(type="pil", label="Colorized Image"),
+        gr.Image(type="pil", label="Super-Resolved Image"),
+        gr.Image(type="pil", label="Final Processed Image")
+    ],
     title="AI Image Restoration",
     description="Restore images with noise removal, super-resolution, and colorization",
-    examples=[["example_images/damaged1.jpg"], ["example_images/old_photo.jpg"]]
+    examples=[["/home/ccx4276/GENAI/test.png"]]
 )
 
 if __name__ == "__main__":
-    iface.launch()
+    iface.launch(share=True)

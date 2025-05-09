@@ -2,12 +2,9 @@
 # AI-Powered Image Restoration
 
 A unified pipeline for noise removal, super-resolution, and colorization of degraded images.
+
 The output is as displayed below: 
-
-
-
-
-
+                
 
 
 ## 🔍 Overview

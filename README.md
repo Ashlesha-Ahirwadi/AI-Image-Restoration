@@ -4,8 +4,9 @@
 A unified pipeline for noise removal, super-resolution, and colorization of degraded images.
 
 The output is as displayed below: 
-                
 
+
+<img width="1512" alt="Screenshot 2025-05-11 at 11 28 51 PM" src="https://github.com/user-attachments/assets/b4d17021-4465-445a-ac57-109fcfcbb19a" />
 
 ## 🔍 Overview
 

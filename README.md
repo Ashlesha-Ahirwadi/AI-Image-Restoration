@@ -55,7 +55,6 @@ project/
 ├── requirements.txt       # Python dependencies
 ├── data/                  # Dataset directory
 ├── models/                # Pre-trained model weights
-├── example_images/        # Sample test images
 ├── src/                   # Source code
 │   ├── DataPreprocessing.py  # Data preparation utilities
 │   ├── Denoising_model.py    # Denoising model implementation

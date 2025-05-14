@@ -38,7 +38,7 @@ data/
     ├── train/
     │   ├── clean/
     │   │   ├── clean_0.png
-    │   │   └── noisy_0.png
+    │   │   
     │   └── noisy/
     └── val/
         └── ...

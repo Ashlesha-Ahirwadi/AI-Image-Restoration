@@ -57,38 +57,44 @@ class PairedImageDataset(Dataset):
             
         return noisy_img, clean_img
 
-# Data Transformations
-transform = transforms.Compose([
-    transforms.Resize((128, 128)),
-    transforms.ToTensor()
-])
+def train():
+    """Train and save the denoiser when this script is run directly."""
+    # Data Transformations
+    transform = transforms.Compose([
+        transforms.Resize((128, 128)),
+        transforms.ToTensor()
+    ])
 
-# DataLoader
-dataset = PairedImageDataset(clean_dir='/home/ccx4276/GENAI/processed/train/clean', noisy_dir='/home/ccx4276/GENAI/processed/train/noisy', transform=transform)
-dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+    # DataLoader
+    dataset = PairedImageDataset(clean_dir='/home/ccx4276/GENAI/processed/train/clean', noisy_dir='/home/ccx4276/GENAI/processed/train/noisy', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
 
-# Initialize model, loss function, optimizer
-model = DenoiseAutoencoder()
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    # Initialize model, loss function, optimizer
+    model = DenoiseAutoencoder()
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-# Training Loop
-num_epochs = 50
-for epoch in range(num_epochs):
-    for data in dataloader:
-        noisy_imgs, clean_imgs = data
+    # Training Loop
+    num_epochs = 50
+    for epoch in range(num_epochs):
+        for data in dataloader:
+            noisy_imgs, clean_imgs = data
         
         
-        # Forward pass
-        outputs = model(noisy_imgs)
-        loss = criterion(outputs, clean_imgs)
+            # Forward pass
+            outputs = model(noisy_imgs)
+            loss = criterion(outputs, clean_imgs)
         
-        # Backward pass
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
         
-    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
     
-# Save Model
-torch.save(model.state_dict(), '/home/ccx4276/models/dae_model.pth')
+    # Save Model
+    torch.save(model.state_dict(), '/home/ccx4276/models/dae_model.pth')
+
+
+if __name__ == "__main__":
+    train()

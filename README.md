@@ -49,20 +49,22 @@ Training data should be organized with matching pairs of clean/noisy images for 
 
 ## 🏗️ Project Structure
 
-```
-project/
+```text
+AI-Image-Restoration/
 ├── README.md              # Project documentation
-├── requirements.txt       # Python dependencies
-├── data/                  # Dataset directory
-├── models/                # Pre-trained model weights
-├── src/                   # Source code
-│   ├── DataPreprocessing.py  # Data preparation utilities
-│   ├── Denoising_model.py    # Denoising model implementation
-│   ├── Super_Resolution.py   # Super-resolution model wrapper
-│   ├── Colorization.py       # Colorization model wrapper
-│   └── Pipeline.py           # Unified pipeline with Gradio UI
-└── logs/                  # Training logs
+├── DataPreprocessing.py   # Data preparation utilities
+├── Denoising_model.py     # Denoising autoencoder and training script
+├── Super_Resolution.py    # Super-resolution wrapper
+├── Colorization.py        # DeOldify colorization wrapper
+├── Pipeline.py            # Image restoration pipeline and Gradio UI
+├── dae_model.h5           # Included model artifact
+└── output.log             # Included execution log
 ```
+
+The Python modules are in the repository root. Training datasets and the
+PyTorch `.pth` checkpoint referenced by the scripts are external inputs;
+they are not included here. A `requirements.txt` file is not currently provided.
+
 
 ## 🧠 Model Architecture
 

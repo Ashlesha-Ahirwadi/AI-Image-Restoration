@@ -66,6 +66,25 @@ PyTorch `.pth` checkpoint referenced by the scripts are external inputs;
 they are not included here. A `requirements.txt` file is not currently provided.
 
 
+## Training the denoiser
+
+Install the training dependencies (`torch`, `torchvision`, and `Pillow`) in your
+Python environment, then run this command from the repository root:
+
+```bash
+python Denoising_model.py \
+  --clean-dir data/processed/train/clean \
+  --noisy-dir data/processed/train/noisy \
+  --output models/dae_model.pth \
+  --epochs 50
+```
+
+Supply folders containing matching clean/noisy filenames. The paths are examples;
+replace them with your own dataset locations. The output directory is created if
+needed. This produces a PyTorch `.pth` checkpoint, separate from the included
+`dae_model.h5` artifact. The inference pipeline still has its own checkpoint path
+that must be configured separately.
+
 ## 🧠 Model Architecture
 
 ### Denoising Autoencoder

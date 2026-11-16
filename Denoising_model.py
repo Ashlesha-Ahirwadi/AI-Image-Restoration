@@ -1,3 +1,5 @@
+import argparse
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -57,8 +59,10 @@ class PairedImageDataset(Dataset):
             
         return noisy_img, clean_img
 
-def train():
-    """Train and save the denoiser when this script is run directly."""
+def train(clean_dir, noisy_dir, output_path, num_epochs=50):
+    """Train on paired image folders and save a PyTorch checkpoint."""
+    if num_epochs < 1:
+        raise ValueError("num_epochs must be at least 1")
     # Data Transformations
     transform = transforms.Compose([
         transforms.Resize((128, 128)),
@@ -66,7 +70,7 @@ def train():
     ])
 
     # DataLoader
-    dataset = PairedImageDataset(clean_dir='/home/ccx4276/GENAI/processed/train/clean', noisy_dir='/home/ccx4276/GENAI/processed/train/noisy', transform=transform)
+    dataset = PairedImageDataset(clean_dir=clean_dir, noisy_dir=noisy_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
 
     # Initialize model, loss function, optimizer
@@ -75,7 +79,6 @@ def train():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     # Training Loop
-    num_epochs = 50
     for epoch in range(num_epochs):
         for data in dataloader:
             noisy_imgs, clean_imgs = data
@@ -93,8 +96,22 @@ def train():
         print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
     
     # Save Model
-    torch.save(model.state_dict(), '/home/ccx4276/models/dae_model.pth')
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), output_path)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Train the denoising autoencoder.")
+    parser.add_argument("--clean-dir", required=True, help="Folder of clean training images")
+    parser.add_argument("--noisy-dir", required=True, help="Folder of matching noisy images")
+    parser.add_argument("--output", required=True, help="Output PyTorch checkpoint path (.pth)")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs (default: 50)")
+    args = parser.parse_args(argv)
+    if args.epochs < 1:
+        parser.error("--epochs must be at least 1")
+    train(args.clean_dir, args.noisy_dir, args.output, num_epochs=args.epochs)
 
 
 if __name__ == "__main__":
-    train()
+    main()
